@@ -39,6 +39,7 @@ from buscas import (
 PASTA_INSTANCIAS = Path("instancias")
 
 SEED_GRUPO = 202604
+LIMITE_TEMPO_PESQUISA = 60
 
 HEURISTICAS = {
     "1": ("h1", h1),
@@ -107,25 +108,6 @@ def ler_inteiro(mensagem, minimo=None, maximo=None):
             print("Valor inválido. Introduza um número inteiro.")
 
 
-def ler_limite_tempo():
-    """Lê o limite de tempo em segundos."""
-
-    while True:
-        try:
-            valor = float(
-                input("Limite de tempo em segundos (ex.: 60): ")
-            )
-
-            if valor <= 0:
-                print("O limite deve ser superior a zero.")
-                continue
-
-            return valor
-
-        except ValueError:
-            print("Introduza um número válido.")
-
-
 # ============================================================
 # CARREGAR INSTÂNCIA
 # ============================================================
@@ -140,7 +122,7 @@ def listar_instancias():
 
 
 def seleccionar_instancia():
-    """Permite escolher uma instância existente."""
+    """Permite escolher primeiro o nível e depois o número da instância."""
 
     instancias = listar_instancias()
 
@@ -148,24 +130,68 @@ def seleccionar_instancia():
         print("\nNão existem instâncias disponíveis.")
         return None
 
-    print("\nINSTÂNCIAS DISPONÍVEIS")
+    niveis = ("pequena", "media", "grande")
+    instancias_por_nivel = {nivel: {} for nivel in niveis}
+
+    for caminho in instancias:
+        nivel = caminho.parent.name
+        prefixo = "instancia_"
+
+        if nivel not in instancias_por_nivel or not caminho.stem.startswith(prefixo):
+            continue
+
+        numero_texto = caminho.stem[len(prefixo):]
+        if numero_texto.isdigit():
+            instancias_por_nivel[nivel][int(numero_texto)] = caminho
+
+    niveis_disponiveis = [
+        nivel for nivel in niveis if instancias_por_nivel[nivel]
+    ]
+
+    if not niveis_disponiveis:
+        print("\nNão existem instâncias disponíveis.")
+        return None
+
+    print("\nDIMENSÃO DAS INSTÂNCIAS")
     print("-" * 40)
 
-    for indice, caminho in enumerate(instancias, start=1):
-        print(f"{indice}. {caminho}")
+    for indice, nivel in enumerate(niveis_disponiveis, start=1):
+        print(f"{indice}. {nivel.capitalize()}")
 
     print("0. Voltar")
 
-    escolha = ler_inteiro(
-        "\nSeleccione uma instância: ",
+    escolha_nivel = ler_inteiro(
+        "\nSeleccione a dimensão: ",
         minimo=0,
-        maximo=len(instancias)
+        maximo=len(niveis_disponiveis)
     )
 
-    if escolha == 0:
+    if escolha_nivel == 0:
         return None
 
-    caminho = instancias[escolha - 1]
+    nivel = niveis_disponiveis[escolha_nivel - 1]
+    instancias_do_nivel = instancias_por_nivel[nivel]
+
+    print(f"\nINSTÂNCIAS {nivel.upper()} DISPONÍVEIS")
+    print("-" * 40)
+    numeros_disponiveis = sorted(instancias_do_nivel)
+    print(", ".join(f"{numero:02d}" for numero in numeros_disponiveis))
+    print("0. Voltar")
+
+    while True:
+        numero = ler_inteiro(
+            "\nSeleccione o número da instância: ",
+            minimo=0
+        )
+
+        if numero == 0:
+            return None
+
+        caminho = instancias_do_nivel.get(numero)
+        if caminho is not None:
+            break
+
+        print("Não existe uma instância com esse número.")
 
     try:
         dados = carregar_instancia(caminho)
@@ -423,8 +449,7 @@ def executar_pesquisa(problema):
 
     print("\nLIMITES DE EXECUÇÃO")
     print("-" * 40)
-
-    limite_tempo = ler_limite_tempo()
+    print(f"Limite de tempo: {LIMITE_TEMPO_PESQUISA} segundos.")
 
     limite_expansoes = input(
         "Limite de nós expandidos (ENTER para sem limite): "
@@ -453,7 +478,7 @@ def executar_pesquisa(problema):
             algoritmo=algoritmo,
             heuristica=heuristica,
             limite_expansoes=limite_expansoes,
-            limite_segundos=limite_tempo
+            limite_segundos=LIMITE_TEMPO_PESQUISA
         )
 
         apresentar_resultado(resultado)

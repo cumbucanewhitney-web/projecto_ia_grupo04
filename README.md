@@ -373,26 +373,36 @@ O código usa um gerador aleatório com uma seed, mas a estrutura das instância
 
 ### 9.1. Módulo `experiencias.py`
 
-Este módulo automatiza testes comparativos dos algoritmos em todas as instâncias do projecto.
+Este módulo automatiza testes comparativos dos algoritmos em seis instâncias:
+três pequenas, duas médias e uma grande. Quando há mais ficheiros disponíveis,
+são escolhidos por ordem alfabética dentro de cada nível. A experiência
+registada neste projecto utiliza:
+
+- `instancias/pequena/instancia_01.json`, `instancia_02.json` e `instancia_03.json`
+- `instancias/media/instancia_01.json` e `instancia_02.json`
+- `instancias/grande/instancia_01.json`
 
 O fluxo é:
 
-1. localizar todos os ficheiros JSON em `instancias/`
+1. localizar os ficheiros JSON em `instancias/` e seleccionar 3 pequenas, 2 médias e 1 grande
 2. carregar cada instância
 3. construir um `CalendarioExames`
 4. executar `UCS` como referência para obter custo ótimo
 5. executar os restantes algoritmos
-6. guardar os resultados num CSV
-7. gerar gráficos comparativos
+6. guardar os resultados em `resultados/resultados.csv`
+7. gerar os três gráficos em `resultados/graficos/`:
+   - `nos_expandidos_vs_tamanho.png`: nós expandidos vs. tamanho da instância, com escala logarítmica no eixo dos nós
+   - `tempo_vs_tamanho.png`: tempo de execução vs. tamanho da instância
+   - `custo_vs_otimo.png`: custo obtido vs. custo ótimo, com a diagonal de referência do UCS
 
 #### Ficheiro produzido
 
-- `resultados/resultados.csv`
+- [`resultados/resultados.csv`](resultados/resultados.csv), com uma linha por algoritmo e instância, incluindo estado, custos, nós expandidos, tempo e memória.
 
 #### Gráficos
 
-- são gerados em `resultados/graficos/`
-- incluem comparações de desempenho entre algoritmos
+- são guardados em `resultados/graficos/`
+- comparam os algoritmos nas instâncias selecionadas
 
 A função `executar_experiencia()` mede:
 
@@ -400,6 +410,10 @@ A função `executar_experiencia()` mede:
 - memória de pico
 - estado final (`SUCESSO`, `FALHOU`, `ERRO`)
 - motivo de falha
+
+Cada execução tem limite de 60 segundos e 2048 MB de memória alocada em Python
+(medida com `tracemalloc`). Ao ultrapassar um limite, a pesquisa é interrompida
+e a execução é registada como `FALHOU` no CSV, em vez de ser omitida.
 
 Isto facilita a análise quantitativa dos algoritmos.
 

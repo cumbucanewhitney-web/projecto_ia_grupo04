@@ -1,0 +1,106 @@
+{
+    "metadata": {
+        "grupo": 4,
+        "turno": "Laboral",
+        "nivel": "pequena",
+        "numero": 6,
+        "semente": 202604
+    },
+    "num_disciplinas": 5,
+    "dias": 3,
+    "periodos_por_dia": 2,
+    "num_slots": 6,
+    "disciplinas": [
+        {
+            "id": "D01",
+            "nome": "Disciplina 01",
+            "inscritos": 166
+        },
+        {
+            "id": "D02",
+            "nome": "Disciplina 02",
+            "inscritos": 38
+        },
+        {
+            "id": "D03",
+            "nome": "Disciplina 03",
+            "inscritos": 78
+        },
+        {
+            "id": "D04",
+            "nome": "Disciplina 04",
+            "inscritos": 115
+        },
+        {
+            "id": "D05",
+            "nome": "Disciplina 05",
+            "inscritos": 70
+        }
+    ],
+    "matriz_estudantes_partilhados": [
+        [
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            5
+        ],
+        [
+            0,
+            0,
+            0,
+            7,
+            0
+        ],
+        [
+            0,
+            0,
+            7,
+            0,
+            6
+        ],
+        [
+            0,
+            5,
+            0,
+            6,
+            0
+        ]
+    ],
+    "salas": [
+        {
+            "id": "S2",
+            "capacidade": 60
+        },
+        {
+            "id": "S3",
+            "capacidade": 80
+        },
+        {
+            "id": "S4",
+            "capacidade": 120
+        }
+    ],
+    "docentes": [
+        "V1",
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6"
+    ],
+    "regras": {
+        "vigilantes_por_sala": 2,
+        "max_vigilancias_por_docente": 4,
+        "penalizacao_mesmo_dia": 3,
+        "penalizacao_dias_consecutivos": 1,
+        "penalizacao_lugar_vazio": 0.01
+    }
+}

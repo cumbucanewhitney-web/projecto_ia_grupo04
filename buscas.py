@@ -75,7 +75,18 @@ def _preencher_resultado_sucesso(resultado, no_solucao):
     return resultado
 
 
-def _executar_com_metricas(nome, funcao):
+def _verificar_limite_memoria(limite_memoria_mb):
+    if limite_memoria_mb is None or not tracemalloc.is_tracing():
+        return
+
+    _, memoria_pico = tracemalloc.get_traced_memory()
+    if memoria_pico > limite_memoria_mb * 1024 * 1024:
+        raise MemoryError(
+            f"Limite de memória excedido ({limite_memoria_mb} MB)."
+        )
+
+
+def _executar_com_metricas(nome, funcao, limite_memoria_mb=None):
     """
     Executa a pesquisa medindo tempo e memória.
     As métricas parciais são guardadas no próprio `resultado` antes de
@@ -86,13 +97,15 @@ def _executar_com_metricas(nome, funcao):
     inicio = perf_counter()
 
     try:
+        _verificar_limite_memoria(limite_memoria_mb)
         funcao(resultado, inicio)
+        _verificar_limite_memoria(limite_memoria_mb)
+    except MemoryError as erro:
+        resultado.sucesso = False
+        resultado.motivo = str(erro) or "Memória insuficiente."
     except TimeoutError:
         resultado.sucesso = False
         resultado.motivo = "Limite de tempo excedido."
-    except MemoryError:
-        resultado.sucesso = False
-        resultado.motivo = "Memória insuficiente."
     finally:
         tempo = perf_counter() - inicio
         _, memoria_pico = tracemalloc.get_traced_memory()
@@ -103,23 +116,40 @@ def _executar_com_metricas(nome, funcao):
     return resultado
 
 
-def _verificar_limites(inicio, limite_segundos, nos_expandidos, limite_expansoes):
+def _verificar_limites(
+    inicio,
+    limite_segundos,
+    nos_expandidos,
+    limite_expansoes,
+    limite_memoria_mb=None,
+):
     if limite_segundos is not None and perf_counter() - inicio >= limite_segundos:
         raise TimeoutError()
     if limite_expansoes is not None and nos_expandidos >= limite_expansoes:
         raise TimeoutError()
+    _verificar_limite_memoria(limite_memoria_mb)
 
 
 def _chave(problema, estado):
     return problema.chave_estado(estado)
 
 
-def _gerar_filhos(problema, no, inicio=None, limite_segundos=None):
+def _gerar_filhos(
+    problema,
+    no,
+    inicio=None,
+    limite_segundos=None,
+    limite_memoria_mb=None,
+):
     filhos = []
     for idx, acao in enumerate(problema.acoes(no.estado)):
-        if inicio is not None and limite_segundos is not None and (idx & 63) == 0:
-            if perf_counter() - inicio >= limite_segundos:
+        if inicio is not None and (idx & 63) == 0:
+            if (
+                limite_segundos is not None
+                and perf_counter() - inicio >= limite_segundos
+            ):
                 raise TimeoutError()
+            _verificar_limite_memoria(limite_memoria_mb)
 
         novo_estado = problema.resultado(no.estado, acao)
         custo_transicao = problema.custo(no.estado, acao, novo_estado)
@@ -139,7 +169,13 @@ def _gerar_filhos(problema, no, inicio=None, limite_segundos=None):
 # 1. BFS — Busca em largura (teste de objectivo na geração)
 # ============================================================
 
-def bfs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=None):
+def bfs(
+    problema,
+    estado_inicial=None,
+    limite_expansoes=None,
+    limite_segundos=None,
+    limite_memoria_mb=None,
+):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
         resultado.nos_gerados = 1
@@ -153,11 +189,19 @@ def bfs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=No
         visitados = {_chave(problema, inicial.estado)}
 
         while fronteira:
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
             atual = fronteira.popleft()
             resultado.nos_expandidos += 1
 
-            for filho in _gerar_filhos(problema, atual, inicio, limite_segundos):
+            for filho in _gerar_filhos(
+                problema, atual, inicio, limite_segundos, limite_memoria_mb
+            ):
                 chave = _chave(problema, filho.estado)
                 if chave not in visitados:
                     resultado.nos_gerados += 1
@@ -174,7 +218,7 @@ def bfs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=No
                 resultado.tamanho_maximo_fronteira, len(fronteira)
             )
 
-    return _executar_com_metricas("BFS", executar)
+    return _executar_com_metricas("BFS", executar, limite_memoria_mb)
 
 
 # ============================================================
@@ -187,6 +231,7 @@ def dfs(
     limite_profundidade=None,
     limite_expansoes=None,
     limite_segundos=None,
+    limite_memoria_mb=None,
 ):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
@@ -203,7 +248,13 @@ def dfs(
         pilha = [[inicial, chave_inicial, None, 0]]
 
         while pilha:
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
             topo = pilha[-1]
             no_atual, chave_atual, filhos, idx = topo
 
@@ -214,7 +265,13 @@ def dfs(
                     continue
 
                 resultado.nos_expandidos += 1
-                filhos = _gerar_filhos(problema, no_atual, inicio, limite_segundos)
+                filhos = _gerar_filhos(
+                    problema,
+                    no_atual,
+                    inicio,
+                    limite_segundos,
+                    limite_memoria_mb,
+                )
                 topo[2] = filhos
 
             if idx >= len(filhos):
@@ -240,7 +297,7 @@ def dfs(
                 resultado.tamanho_maximo_fronteira, len(pilha)
             )
 
-    return _executar_com_metricas("DFS", executar)
+    return _executar_com_metricas("DFS", executar, limite_memoria_mb)
 
 
 # ============================================================
@@ -253,6 +310,7 @@ def ids(
     limite_profundidade=100,
     limite_expansoes=None,
     limite_segundos=None,
+    limite_memoria_mb=None,
 ):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
@@ -262,7 +320,13 @@ def ids(
         expandidos_anteriores = set()
 
         def pesquisa_limitada(no, limite, caminho_atual):
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
 
             if problema.teste_objetivo(no.estado):
                 return no, False
@@ -279,7 +343,9 @@ def ids(
             resultado.nos_expandidos += 1
             houve_corte = False
 
-            filhos = _gerar_filhos(problema, no, inicio, limite_segundos)
+            filhos = _gerar_filhos(
+                problema, no, inicio, limite_segundos, limite_memoria_mb
+            )
             for filho in filhos:
                 chave = _chave(problema, filho.estado)
                 if chave in caminho_atual:
@@ -315,14 +381,20 @@ def ids(
 
         resultado.motivo = "Limite de profundidade atingido."
 
-    return _executar_com_metricas("IDS", executar)
+    return _executar_com_metricas("IDS", executar, limite_memoria_mb)
 
 
 # ============================================================
 # 4. UCS — Custo uniforme
 # ============================================================
 
-def ucs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=None):
+def ucs(
+    problema,
+    estado_inicial=None,
+    limite_expansoes=None,
+    limite_segundos=None,
+    limite_memoria_mb=None,
+):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
         sequencia = count()
@@ -333,7 +405,13 @@ def ucs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=No
         resultado.tamanho_maximo_fronteira = 1
 
         while fronteira:
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
             custo_atual, _, atual = heapq.heappop(fronteira)
             chave_atual = _chave(problema, atual.estado)
 
@@ -346,7 +424,9 @@ def ucs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=No
 
             resultado.nos_expandidos += 1
 
-            for filho in _gerar_filhos(problema, atual, inicio, limite_segundos):
+            for filho in _gerar_filhos(
+                problema, atual, inicio, limite_segundos, limite_memoria_mb
+            ):
                 chave = _chave(problema, filho.estado)
                 if filho.custo < melhor_custo.get(chave, float("inf")):
                     melhor_custo[chave] = filho.custo
@@ -357,14 +437,21 @@ def ucs(problema, estado_inicial=None, limite_expansoes=None, limite_segundos=No
                 resultado.tamanho_maximo_fronteira, len(fronteira)
             )
 
-    return _executar_com_metricas("UCS", executar)
+    return _executar_com_metricas("UCS", executar, limite_memoria_mb)
 
 
 # ============================================================
 # 5. Gulosa — Greedy Best-First Search
 # ============================================================
 
-def gulosa(problema, heuristica, estado_inicial=None, limite_expansoes=None, limite_segundos=None):
+def gulosa(
+    problema,
+    heuristica,
+    estado_inicial=None,
+    limite_expansoes=None,
+    limite_segundos=None,
+    limite_memoria_mb=None,
+):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
         sequencia = count()
@@ -376,7 +463,13 @@ def gulosa(problema, heuristica, estado_inicial=None, limite_expansoes=None, lim
         resultado.tamanho_maximo_fronteira = 1
 
         while fronteira:
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
             _, _, atual = heapq.heappop(fronteira)
 
             if problema.teste_objetivo(atual.estado):
@@ -385,7 +478,9 @@ def gulosa(problema, heuristica, estado_inicial=None, limite_expansoes=None, lim
 
             resultado.nos_expandidos += 1
 
-            for filho in _gerar_filhos(problema, atual, inicio, limite_segundos):
+            for filho in _gerar_filhos(
+                problema, atual, inicio, limite_segundos, limite_memoria_mb
+            ):
                 chave = _chave(problema, filho.estado)
                 if chave not in visitados:
                     visitados.add(chave)
@@ -399,14 +494,21 @@ def gulosa(problema, heuristica, estado_inicial=None, limite_expansoes=None, lim
                 resultado.tamanho_maximo_fronteira, len(fronteira)
             )
 
-    return _executar_com_metricas("Gulosa", executar)
+    return _executar_com_metricas("Gulosa", executar, limite_memoria_mb)
 
 
 # ============================================================
 # 6. A* — A estrela
 # ============================================================
 
-def a_estrela(problema, heuristica, estado_inicial=None, limite_expansoes=None, limite_segundos=None):
+def a_estrela(
+    problema,
+    heuristica,
+    estado_inicial=None,
+    limite_expansoes=None,
+    limite_segundos=None,
+    limite_memoria_mb=None,
+):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
         sequencia = count()
@@ -418,7 +520,13 @@ def a_estrela(problema, heuristica, estado_inicial=None, limite_expansoes=None, 
         resultado.tamanho_maximo_fronteira = 1
 
         while fronteira:
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
             _, _, atual = heapq.heappop(fronteira)
             chave_atual = _chave(problema, atual.estado)
 
@@ -431,7 +539,9 @@ def a_estrela(problema, heuristica, estado_inicial=None, limite_expansoes=None, 
 
             resultado.nos_expandidos += 1
 
-            for filho in _gerar_filhos(problema, atual, inicio, limite_segundos):
+            for filho in _gerar_filhos(
+                problema, atual, inicio, limite_segundos, limite_memoria_mb
+            ):
                 chave = _chave(problema, filho.estado)
                 if filho.custo < melhor_custo.get(chave, float("inf")):
                     h_val = heuristica(filho.estado, problema)
@@ -445,14 +555,21 @@ def a_estrela(problema, heuristica, estado_inicial=None, limite_expansoes=None, 
                 resultado.tamanho_maximo_fronteira, len(fronteira)
             )
 
-    return _executar_com_metricas("A*", executar)
+    return _executar_com_metricas("A*", executar, limite_memoria_mb)
 
 
 # ============================================================
 # 7. DFBnB — Depth-First Branch and Bound
 # ============================================================
 
-def dfbnb(problema, heuristica, estado_inicial=None, limite_expansoes=None, limite_segundos=None):
+def dfbnb(
+    problema,
+    heuristica,
+    estado_inicial=None,
+    limite_expansoes=None,
+    limite_segundos=None,
+    limite_memoria_mb=None,
+):
     def executar(resultado, inicio):
         inicial = _construir_no_inicial(problema, estado_inicial)
         melhor_solucao = None
@@ -465,7 +582,13 @@ def dfbnb(problema, heuristica, estado_inicial=None, limite_expansoes=None, limi
         def explorar(atual):
             nonlocal melhor_solucao, limite
 
-            _verificar_limites(inicio, limite_segundos, resultado.nos_expandidos, limite_expansoes)
+            _verificar_limites(
+                inicio,
+                limite_segundos,
+                resultado.nos_expandidos,
+                limite_expansoes,
+                limite_memoria_mb,
+            )
 
             if problema.teste_objetivo(atual.estado):
                 if atual.custo < limite:
@@ -474,7 +597,9 @@ def dfbnb(problema, heuristica, estado_inicial=None, limite_expansoes=None, limi
                 return
 
             resultado.nos_expandidos += 1
-            filhos = _gerar_filhos(problema, atual, inicio, limite_segundos)
+            filhos = _gerar_filhos(
+                problema, atual, inicio, limite_segundos, limite_memoria_mb
+            )
             resultado.nos_gerados += len(filhos)
 
             filhos_avaliados = []
@@ -506,7 +631,7 @@ def dfbnb(problema, heuristica, estado_inicial=None, limite_expansoes=None, limi
         if melhor_solucao is not None:
             _preencher_resultado_sucesso(resultado, melhor_solucao)
 
-    return _executar_com_metricas("DFBnB", executar)
+    return _executar_com_metricas("DFBnB", executar, limite_memoria_mb)
 
 
 # ============================================================
@@ -520,17 +645,25 @@ def executar_busca(
     estado_inicial=None,
     limite_expansoes=None,
     limite_segundos=None,
+    limite_memoria_mb=None,
 ):
     nome = algoritmo.strip().upper()
 
     if nome == "BFS":
-        return bfs(problema, estado_inicial, limite_expansoes, limite_segundos)
+        return bfs(
+            problema,
+            estado_inicial,
+            limite_expansoes,
+            limite_segundos,
+            limite_memoria_mb,
+        )
     if nome == "DFS":
         return dfs(
             problema,
             estado_inicial=estado_inicial,
             limite_expansoes=limite_expansoes,
             limite_segundos=limite_segundos,
+            limite_memoria_mb=limite_memoria_mb,
         )
     if nome == "IDS":
         return ids(
@@ -538,24 +671,52 @@ def executar_busca(
             estado_inicial=estado_inicial,
             limite_expansoes=limite_expansoes,
             limite_segundos=limite_segundos,
+            limite_memoria_mb=limite_memoria_mb,
         )
     if nome == "UCS":
-        return ucs(problema, estado_inicial, limite_expansoes, limite_segundos)
+        return ucs(
+            problema,
+            estado_inicial,
+            limite_expansoes,
+            limite_segundos,
+            limite_memoria_mb,
+        )
 
     if nome in ("GULOSA", "GREEDY"):
         if heuristica is None:
             raise ValueError("A busca Gulosa precisa de uma heurística.")
-        return gulosa(problema, heuristica, estado_inicial, limite_expansoes, limite_segundos)
+        return gulosa(
+            problema,
+            heuristica,
+            estado_inicial,
+            limite_expansoes,
+            limite_segundos,
+            limite_memoria_mb,
+        )
 
     if nome in ("A*", "ASTAR"):
         if heuristica is None:
             raise ValueError("A* precisa de uma heurística.")
-        return a_estrela(problema, heuristica, estado_inicial, limite_expansoes, limite_segundos)
+        return a_estrela(
+            problema,
+            heuristica,
+            estado_inicial,
+            limite_expansoes,
+            limite_segundos,
+            limite_memoria_mb,
+        )
 
     if nome == "DFBNB":
         if heuristica is None:
             raise ValueError("DFBnB precisa de uma heurística.")
-        return dfbnb(problema, heuristica, estado_inicial, limite_expansoes, limite_segundos)
+        return dfbnb(
+            problema,
+            heuristica,
+            estado_inicial,
+            limite_expansoes,
+            limite_segundos,
+            limite_memoria_mb,
+        )
 
     raise ValueError(f"Algoritmo desconhecido: {algoritmo}")
 

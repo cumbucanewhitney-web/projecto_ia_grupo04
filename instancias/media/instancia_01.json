@@ -1,0 +1,194 @@
+{
+    "metadata": {
+        "grupo": 4,
+        "turno": "Laboral",
+        "nivel": "media",
+        "numero": 1,
+        "semente": 202604
+    },
+    "num_disciplinas": 9,
+    "dias": 4,
+    "periodos_por_dia": 2,
+    "num_slots": 8,
+    "disciplinas": [
+        {
+            "id": "D01",
+            "nome": "Disciplina 01",
+            "inscritos": 173
+        },
+        {
+            "id": "D02",
+            "nome": "Disciplina 02",
+            "inscritos": 69
+        },
+        {
+            "id": "D03",
+            "nome": "Disciplina 03",
+            "inscritos": 89
+        },
+        {
+            "id": "D04",
+            "nome": "Disciplina 04",
+            "inscritos": 50
+        },
+        {
+            "id": "D05",
+            "nome": "Disciplina 05",
+            "inscritos": 105
+        },
+        {
+            "id": "D06",
+            "nome": "Disciplina 06",
+            "inscritos": 100
+        },
+        {
+            "id": "D07",
+            "nome": "Disciplina 07",
+            "inscritos": 76
+        },
+        {
+            "id": "D08",
+            "nome": "Disciplina 08",
+            "inscritos": 45
+        },
+        {
+            "id": "D09",
+            "nome": "Disciplina 09",
+            "inscritos": 50
+        }
+    ],
+    "matriz_estudantes_partilhados": [
+        [
+            0,
+            11,
+            15,
+            5,
+            0,
+            7,
+            8,
+            12,
+            4
+        ],
+        [
+            11,
+            0,
+            0,
+            11,
+            0,
+            6,
+            0,
+            15,
+            13
+        ],
+        [
+            15,
+            0,
+            0,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0
+        ],
+        [
+            5,
+            11,
+            0,
+            0,
+            0,
+            15,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3
+        ],
+        [
+            7,
+            6,
+            0,
+            15,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            8,
+            0,
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            12,
+            15,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        [
+            4,
+            13,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0
+        ]
+    ],
+    "salas": [
+        {
+            "id": "S1",
+            "capacidade": 40
+        },
+        {
+            "id": "S2",
+            "capacidade": 60
+        },
+        {
+            "id": "S3",
+            "capacidade": 80
+        },
+        {
+            "id": "S4",
+            "capacidade": 120
+        }
+    ],
+    "docentes": [
+        "V1",
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6"
+    ],
+    "regras": {
+        "vigilantes_por_sala": 2,
+        "max_vigilancias_por_docente": 4,
+        "penalizacao_mesmo_dia": 3,
+        "penalizacao_dias_consecutivos": 1,
+        "penalizacao_lugar_vazio": 0.01
+    }
+}

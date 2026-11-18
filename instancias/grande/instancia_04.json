@@ -1,0 +1,346 @@
+{
+    "metadata": {
+        "grupo": 4,
+        "turno": "Laboral",
+        "nivel": "grande",
+        "numero": 4,
+        "semente": 202607
+    },
+    "num_disciplinas": 14,
+    "dias": 5,
+    "periodos_por_dia": 2,
+    "num_slots": 10,
+    "disciplinas": [
+        {
+            "id": "D01",
+            "nome": "Disciplina 01",
+            "inscritos": 162
+        },
+        {
+            "id": "D02",
+            "nome": "Disciplina 02",
+            "inscritos": 163
+        },
+        {
+            "id": "D03",
+            "nome": "Disciplina 03",
+            "inscritos": 71
+        },
+        {
+            "id": "D04",
+            "nome": "Disciplina 04",
+            "inscritos": 88
+        },
+        {
+            "id": "D05",
+            "nome": "Disciplina 05",
+            "inscritos": 74
+        },
+        {
+            "id": "D06",
+            "nome": "Disciplina 06",
+            "inscritos": 49
+        },
+        {
+            "id": "D07",
+            "nome": "Disciplina 07",
+            "inscritos": 101
+        },
+        {
+            "id": "D08",
+            "nome": "Disciplina 08",
+            "inscritos": 89
+        },
+        {
+            "id": "D09",
+            "nome": "Disciplina 09",
+            "inscritos": 61
+        },
+        {
+            "id": "D10",
+            "nome": "Disciplina 10",
+            "inscritos": 51
+        },
+        {
+            "id": "D11",
+            "nome": "Disciplina 11",
+            "inscritos": 29
+        },
+        {
+            "id": "D12",
+            "nome": "Disciplina 12",
+            "inscritos": 48
+        },
+        {
+            "id": "D13",
+            "nome": "Disciplina 13",
+            "inscritos": 106
+        },
+        {
+            "id": "D14",
+            "nome": "Disciplina 14",
+            "inscritos": 59
+        }
+    ],
+    "matriz_estudantes_partilhados": [
+        [
+            0,
+            16,
+            0,
+            0,
+            0,
+            0,
+            17,
+            0,
+            14,
+            0,
+            0,
+            31,
+            25,
+            0
+        ],
+        [
+            16,
+            0,
+            33,
+            0,
+            0,
+            0,
+            10,
+            0,
+            0,
+            0,
+            25,
+            25,
+            0,
+            26
+        ],
+        [
+            0,
+            33,
+            0,
+            0,
+            0,
+            21,
+            0,
+            18,
+            0,
+            0,
+            0,
+            0,
+            17,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            0,
+            31,
+            0,
+            25,
+            0,
+            0,
+            15,
+            24,
+            0,
+            6,
+            0
+        ],
+        [
+            0,
+            0,
+            0,
+            31,
+            0,
+            34,
+            0,
+            0,
+            0,
+            0,
+            12,
+            0,
+            0,
+            30
+        ],
+        [
+            0,
+            0,
+            21,
+            0,
+            34,
+            0,
+            0,
+            9,
+            0,
+            11,
+            0,
+            16,
+            0,
+            0
+        ],
+        [
+            17,
+            10,
+            0,
+            25,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            5,
+            9
+        ],
+        [
+            0,
+            0,
+            18,
+            0,
+            0,
+            9,
+            0,
+            0,
+            18,
+            0,
+            14,
+            0,
+            13,
+            0
+        ],
+        [
+            14,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            18,
+            0,
+            28,
+            12,
+            0,
+            8,
+            5
+        ],
+        [
+            0,
+            0,
+            0,
+            15,
+            0,
+            11,
+            0,
+            0,
+            28,
+            0,
+            18,
+            18,
+            0,
+            0
+        ],
+        [
+            0,
+            25,
+            0,
+            24,
+            12,
+            0,
+            0,
+            14,
+            12,
+            18,
+            0,
+            24,
+            18,
+            0
+        ],
+        [
+            31,
+            25,
+            0,
+            0,
+            0,
+            16,
+            0,
+            0,
+            0,
+            18,
+            24,
+            0,
+            0,
+            9
+        ],
+        [
+            25,
+            0,
+            17,
+            6,
+            0,
+            0,
+            5,
+            13,
+            8,
+            0,
+            18,
+            0,
+            0,
+            0
+        ],
+        [
+            0,
+            26,
+            0,
+            0,
+            30,
+            0,
+            9,
+            0,
+            5,
+            0,
+            0,
+            9,
+            0,
+            0
+        ]
+    ],
+    "salas": [
+        {
+            "id": "S1",
+            "capacidade": 40
+        },
+        {
+            "id": "S2",
+            "capacidade": 60
+        },
+        {
+            "id": "S3",
+            "capacidade": 80
+        },
+        {
+            "id": "S4",
+            "capacidade": 120
+        }
+    ],
+    "docentes": [
+        "V1",
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6",
+        "V7",
+        "V8"
+    ],
+    "regras": {
+        "vigilantes_por_sala": 2,
+        "max_vigilancias_por_docente": 4,
+        "penalizacao_mesmo_dia": 3,
+        "penalizacao_dias_consecutivos": 1,
+        "penalizacao_lugar_vazio": 0.01
+    }
+}

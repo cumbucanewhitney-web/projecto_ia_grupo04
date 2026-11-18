@@ -1,11 +1,10 @@
-
 """
 experiencias.py
 
 Executa experiências sobre as instâncias do projecto.
 
 Responsabilidades:
-- Encontrar instâncias JSON.
+- Encontrar instâncias JSON (3 pequenas, 2 médias e 1 grande).
 - Executar os sete algoritmos.
 - Testar h1 e h2 nos algoritmos informados.
 - Registar métricas.
@@ -17,16 +16,14 @@ Os limites definidos são:
 - 2 GB de memória de pico.
 
 NOTA:
-O controlo de tempo é passado aos algoritmos.
-O limite de memória é verificado depois da execução, porque
-a versão actual de buscas.py ainda não interrompe a pesquisa
-quando atinge um limite de memória.
+Os limites são passados aos algoritmos e verificados durante a pesquisa.
+As execuções que excedem qualquer limite ficam registadas como FALHOU no CSV.
 """
 
 import csv
-import json
 import time
 from pathlib import Path
+from statistics import mean
 
 from gerador import carregar_instancia
 from dominio import CalendarioExames
@@ -50,6 +47,12 @@ LIMITE_MEMORIA_MB = 2048
 HEURISTICAS = {
     "h1": h1,
     "h2": h2
+}
+
+NUMERO_INSTANCIAS_POR_NIVEL = {
+    "pequena": 3,
+    "media": 2,
+    "grande": 1
 }
 
 
@@ -79,6 +82,22 @@ def identificar_nivel(caminho):
             return parte.lower()
 
     return "nao_identificado"
+
+
+def selecionar_instancias(instancias):
+    """Selecciona um número limitado e determinístico por nível."""
+    instancias = list(instancias)
+    selecionadas = []
+
+    for nivel, quantidade in NUMERO_INSTANCIAS_POR_NIVEL.items():
+        do_nivel = sorted(
+            caminho
+            for caminho in instancias
+            if identificar_nivel(caminho) == nivel
+        )
+        selecionadas.extend(do_nivel[:quantidade])
+
+    return selecionadas
 
 
 # ============================================================
@@ -123,7 +142,8 @@ def executar_experiencia(
     Executa um algoritmo e recolhe as métricas.
 
     O tempo e a memória são medidos pelo próprio buscas.py,
-    através de perf_counter() e tracemalloc.
+    através de perf_counter() e tracemalloc. A pesquisa é interrompida
+    quando ultrapassa qualquer um dos limites.
     """
     inicio = time.perf_counter()
 
@@ -132,11 +152,11 @@ def executar_experiencia(
             problema=problema,
             algoritmo=algoritmo,
             heuristica=heuristica,
-            limite_segundos=LIMITE_TEMPO
+            limite_segundos=LIMITE_TEMPO,
+            limite_memoria_mb=LIMITE_MEMORIA_MB
         )
 
         tempo_total = time.perf_counter() - inicio
-
         memoria_mb = resultado.memoria_pico_mb
 
         # Verificar se o limite de memória foi ultrapassado.
@@ -162,6 +182,17 @@ def executar_experiencia(
             "motivo": motivo,
             "tempo_total": tempo_total,
             "memoria_mb": memoria_mb
+        }
+
+    except MemoryError as erro:
+        tempo_total = time.perf_counter() - inicio
+
+        return {
+            "resultado": None,
+            "estado": "FALHOU",
+            "motivo": str(erro) or "Limite de memória excedido.",
+            "tempo_total": tempo_total,
+            "memoria_mb": LIMITE_MEMORIA_MB
         }
 
     except Exception as erro:
@@ -249,7 +280,8 @@ def construir_registo(
 
 def executar_todas_experiencias():
     """
-    Executa todos os algoritmos em todas as instâncias encontradas.
+    Executa todos os algoritmos sobre 3 instâncias pequenas,
+    2 médias e 1 grande.
 
     Cada instância é carregada uma vez.
     O custo óptimo de referência é obtido através do UCS.
@@ -258,12 +290,20 @@ def executar_todas_experiencias():
     PASTA_RESULTADOS.mkdir(parents=True, exist_ok=True)
     PASTA_GRAFICOS.mkdir(parents=True, exist_ok=True)
 
-    instancias = encontrar_instancias()
+    instancias = selecionar_instancias(encontrar_instancias())
 
     if not instancias:
         print("Não foram encontradas instâncias.")
         print("Verifique a pasta instancias/.")
         return
+
+    print(
+        "Instâncias seleccionadas: "
+        + ", ".join(
+            f"{nivel}={sum(identificar_nivel(c) == nivel for c in instancias)}"
+            for nivel in NUMERO_INSTANCIAS_POR_NIVEL
+        )
+    )
 
     registos = []
 
@@ -476,7 +516,7 @@ def carregar_resultados_csv():
 
 def grafico_nos_expandidos(registos):
     """
-    Compara o número de nós expandidos com o tamanho da instância.
+    Compara a média de nós expandidos por tamanho da instância.
 
     O eixo vertical utiliza escala logarítmica.
     """
@@ -495,28 +535,24 @@ def grafico_nos_expandidos(registos):
             continue
 
         nome = registo["algoritmo"]
-
         if registo["heuristica"]:
             nome += "-" + registo["heuristica"]
 
-        dados.setdefault(nome, []).append((tamanho, nos))
+        dados.setdefault(nome, {}).setdefault(tamanho, []).append(max(1, nos))
 
     plt.figure(figsize=(10, 6))
 
-    for nome, valores in dados.items():
-        valores.sort(key=lambda item: item[0])
-
-        x = [item[0] for item in valores]
-        y = [max(1, item[1]) for item in valores]
-
-        plt.plot(x, y, marker="o", label=nome)
+    for nome, por_tamanho in dados.items():
+        tamanhos = sorted(por_tamanho)
+        medias = [mean(por_tamanho[t]) for t in tamanhos]
+        plt.plot(tamanhos, medias, marker="o", label=nome)
 
     plt.yscale("log")
     plt.xlabel("Tamanho da instância (número de disciplinas)")
-    plt.ylabel("Nós expandidos (escala logarítmica)")
+    plt.ylabel("Nós expandidos - média (escala logarítmica)")
     plt.title("Nós expandidos vs. tamanho da instância")
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, which="both", linestyle="--", alpha=0.5)
 
     plt.tight_layout()
     plt.savefig(
@@ -530,12 +566,15 @@ def grafico_nos_expandidos(registos):
 # ============================================================
 
 def grafico_tempo(registos):
-    """Compara o tempo de execução com o tamanho da instância."""
+    """Compara a média do tempo de execução por tamanho da instância."""
     import matplotlib.pyplot as plt
 
     dados = {}
 
     for registo in registos:
+        if registo["estado"] == "ERRO":
+            continue
+
         try:
             tamanho = int(registo["tamanho_instancia"])
             tempo = float(registo["tempo_segundos"])
@@ -543,27 +582,23 @@ def grafico_tempo(registos):
             continue
 
         nome = registo["algoritmo"]
-
         if registo["heuristica"]:
             nome += "-" + registo["heuristica"]
 
-        dados.setdefault(nome, []).append((tamanho, tempo))
+        dados.setdefault(nome, {}).setdefault(tamanho, []).append(tempo)
 
     plt.figure(figsize=(10, 6))
 
-    for nome, valores in dados.items():
-        valores.sort(key=lambda item: item[0])
-
-        x = [item[0] for item in valores]
-        y = [item[1] for item in valores]
-
-        plt.plot(x, y, marker="o", label=nome)
+    for nome, por_tamanho in dados.items():
+        tamanhos = sorted(por_tamanho)
+        medias = [mean(por_tamanho[t]) for t in tamanhos]
+        plt.plot(tamanhos, medias, marker="o", label=nome)
 
     plt.xlabel("Tamanho da instância (número de disciplinas)")
-    plt.ylabel("Tempo de execução (segundos)")
+    plt.ylabel("Tempo médio de execução (segundos)")
     plt.title("Tempo de execução vs. tamanho da instância")
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, linestyle="--", alpha=0.5)
 
     plt.tight_layout()
     plt.savefig(
@@ -598,7 +633,6 @@ def grafico_custo_otimo(registos):
             continue
 
         nome = registo["algoritmo"]
-
         if registo["heuristica"]:
             nome += "-" + registo["heuristica"]
 
@@ -606,16 +640,24 @@ def grafico_custo_otimo(registos):
 
     plt.figure(figsize=(8, 8))
 
+    marcadores = ["o", "s", "^", "D", "v", "P", "X", "*", "<", ">"]
     todos_os_valores = []
 
-    for nome, valores in dados.items():
+    for idx, (nome, valores) in enumerate(dados.items()):
         x = [item[0] for item in valores]
         y = [item[1] for item in valores]
 
         todos_os_valores.extend(x)
         todos_os_valores.extend(y)
 
-        plt.scatter(x, y, label=nome)
+        plt.scatter(
+            x,
+            y,
+            marker=marcadores[idx % len(marcadores)],
+            s=max(35, 110 - idx * 8),
+            alpha=0.75,
+            label=nome
+        )
 
     if todos_os_valores:
         minimo = min(todos_os_valores)
@@ -625,6 +667,7 @@ def grafico_custo_otimo(registos):
             [minimo, maximo],
             [minimo, maximo],
             linestyle="--",
+            color="black",
             label="Custo óptimo"
         )
 
@@ -632,7 +675,7 @@ def grafico_custo_otimo(registos):
     plt.ylabel("Custo obtido")
     plt.title("Custo obtido vs. custo óptimo")
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, linestyle="--", alpha=0.5)
 
     plt.tight_layout()
     plt.savefig(
